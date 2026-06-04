@@ -6,7 +6,11 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 RAW_TRIP_DIR = BASE_DIR / 'data' / 'raw' / 'trip'
 CLEAN_DIR = BASE_DIR / 'data' / 'clean'
 
-# --------------------------------  DATAFAMES INFORMATION  --------------------------------------------------
+
+# ------------------------
+# DATAFAMES INFORMATION
+# ------------------------
+
 
 # La siguiente lista contiene los nombres de los DataFrames que existen.
 list_names_df = ['yellow_tripdata_2024-01.parquet', 'yellow_tripdata_2024-02.parquet', 
@@ -28,12 +32,18 @@ list_columns = ['VendorID', 'tpep_pickup_datetime', 'tpep_dropoff_datetime', 'pa
                 'payment_type', 'fare_amount', 'extra','mta_tax', 'tip_amount', 'tolls_amount',
                 'improvement_surcharge', 'total_amount', 'congestion_surcharge', 'Airport_fee']
 
+column_2025 = 'cbd_congestion_fee'
+
 dates = ['2024-01-01', '2024-02-01', '2024-03-01', '2024-04-01', '2024-05-01', '2024-06-01',
          '2024-07-01', '2024-08-01', '2024-09-01', '2024-10-01', '2024-11-01', '2024-12-01',
          '2025-01-01', '2025-02-01', '2025-03-01', '2025-04-01', '2025-05-01', '2025-06-01', 
          '2025-07-01', '2025-08-01', '2025-09-01', '2025-10-01', '2025-11-01', '2025-12-01']
 
-# ------------------------------------  CLEANING  --------------------------------------------------
+
+# ------------------------ 
+# CLEANING
+# ------------------------
+
 
 # La siguente funcion remplaza los valores nulos por valores especificos dependiendo de cada columna.
 def replace_values_nan():
@@ -42,11 +52,9 @@ def replace_values_nan():
         
         df = pd.read_parquet(RAW_TRIP_DIR / name_df)    # se lee el DataFrame
 
-        values = {'passenger_count': 0, 
-                  'store_and_fwd_flag': 'N', 
-                  'passenger_count': 0,
+        values = {'passenger_count': 0,
                   'RatecodeID': 99, 
-                  'store_and_fwd_flag': 0, 
+                  'store_and_fwd_flag': 'N', 
                   'congestion_surcharge': 0, 
                   'Airport_fee': 0}
 
@@ -63,38 +71,80 @@ def transform_types():
         df['VendorID'] = df['VendorID'].astype('int32')
 
 
-def dates_correction():
+def dates_corrections(df, name, position):
 
-    column_pickup = 'tpep_pickup_datetime'
-    columna_dropoff = 'tpep_dropoff_datetime'
+    datetime_columns = ['tpep_pickup_datetime', 'tpep_dropoff_datetime']
     
-    print(f'Se realizara la correccion de las fechas de los DataFrames para la columna "{column_pickup}"...\n')
-    
-    for i, name_df in enumerate(list_names_df):
+    for column in datetime_columns:
 
-        df = pd.read_parquet(RAW_TRIP_DIR / name_df)
+        total_values = df[column].count()
 
-        total_values = df[column_pickup].count()
-
-        df = df[(df[column_pickup] >= dates[i]) & (df[column_pickup] < dates[i+1])]
-
-        correct_values = df[column_pickup].count()
+        if column == 'tpep_pickup_datetime':
+            df = df[(df[column] >= dates[position]) & (df[column] < dates[position+1])]
+        else:
+            df = df[df[column] >= dates[0]]
+        
+        correct_values = df[column].count()
         deleted_values = total_values - correct_values
+        
+    print('Valores de fechas corregidos...')
 
-        print(f'{name_df} -> Total: {total_values} / Correct: {correct_values} / Deleted: {deleted_values}')
+    return df
 
 
-    print(f'\nSe realizara la correccion de las fechas de los DataFrames para la columna "{columna_dropoff}"...\n')
-    
+'''
+La siguiente funcion corrige los valores negativos que existan para las columnas:
+
+    - fare_amount
+    - extra
+    - mta_tax
+    - tip_amount
+    - tolls_amount
+    - improvement_surcharge
+    - total_amount
+    - congestion_surcharge
+    - Airport_fee
+    - cbd_congestion_fee
+'''
+
+def negative_values_correction(df, name, flag = False):
+
+    # Se utiliza la funcino abs() para convertir los valores negativos a absolutos y asi corregirlos.
+    df['fare_amount'] = df['fare_amount'].abs()
+    df['extra'] = df['extra'].abs()
+    df['mta_tax'] = df['mta_tax'].abs()
+    df['tip_amount'] = df['tip_amount'].abs()
+    df['tolls_amount'] = df['tolls_amount'].abs()
+    df['improvement_surcharge'] = df['improvement_surcharge'].abs()
+    df['total_amount'] = df['total_amount'].abs()
+    df['congestion_surcharge'] = df['congestion_surcharge'].abs()
+    df['Airport_fee'] = df['Airport_fee'].abs()
+
+    if flag == True:
+        df[column_2025] = df[column_2025].abs() # Esta columna solo se encuentra en los Datasets del año 2025.
+
+    print('Valores negativos corregidos...')
+
+    return df
+
+
+'''
+La funcion main() sera la encargada de ejecutar todas las funciones de limpieza para cada dataset.
+'''
+
+def main():
+
+    # El ciclo for funciona para cargar cada DataFrame.
     for i, name_df in enumerate(list_names_df):
+        
+        df = pd.read_parquet(RAW_TRIP_DIR / name_df) # se lee el DataFrame
+        
+        print(f'\n----------------------------  {name_df}  ------------------------------------\n')
+        # Se genera un condicional ya que hay una columna extra en los datasets del año 2025.
+        if i >= 12: 
+            # Se envia el flag como True para que se corrija la columna extra.
+            df = negative_values_correction(df, name_df, flag = True) 
+        else:
+            df = negative_values_correction(df, name_df)
 
-        df = pd.read_parquet(RAW_TRIP_DIR / name_df)
-
-        total_values = df[columna_dropoff].count()
-
-        df = df[df[columna_dropoff] >= dates[i]]
-
-        correct_values = df[columna_dropoff].count()
-        deleted_values = total_values - correct_values
-
-        print(f'{name_df} -> Total: {total_values} / Correct: {correct_values} / Deleted: {deleted_values}')
+        df = dates_corrections(df, name_df, i)

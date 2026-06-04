@@ -1,6 +1,5 @@
 ## Proyecto Practico - Taxis NYC
 
-
 Una empresa de servicios de transporte de pasajeros que actualmente se encuentra operando en el sector de micros
 de media y larga distancia, está interesada en invertir en el sector de transporte de pasajeros con automóviles.<br>
 Pero debido a que sería una unidad de negocio nueva, se pretende hacer un análisis preliminar del movimiento de los
